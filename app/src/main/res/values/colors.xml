@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+
+    <!-- Custom brand colors -->
+    <color name="custom_primary">#0A84FF</color> <!-- Blue button/appbar -->
+    <color name="custom_primary_variant">#006EDC</color> <!-- Optional dark variant -->
+    <color name="custom_status_bar">#006EDC</color> <!-- Status bar -->
+</resources>

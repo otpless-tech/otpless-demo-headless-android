@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/home_fragment"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@android:color/white"
+    tools:context=".HomeScreen">
+
+    <!-- Scrollable input UI -->
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:fillViewport="true">
+
+        <LinearLayout
+            android:id="@+id/home_root"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="32dp"
+            android:gravity="center_horizontal">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="OTPless Demo"
+                android:textSize="22sp"
+                android:textStyle="bold"
+                android:textColor="#222222"
+                android:layout_marginBottom="24dp" />
+
+            <EditText
+                android:id="@+id/phone_input"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Enter phone number"
+                android:inputType="phone"
+                android:padding="12dp"
+                android:layout_marginBottom="16dp"
+                android:textColor="#000000"
+                android:textSize="16sp" />
+
+            <Button
+                android:id="@+id/phone_submit"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Continue"
+                android:textAllCaps="false"
+                android:backgroundTint="#0A84FF"
+                android:textColor="@android:color/white"
+                android:padding="12dp"
+                android:layout_marginTop="8dp"
+                android:layout_marginBottom="16dp" />
+        </LinearLayout>
+    </ScrollView>
+
+    <!-- Overlay loader with text -->
+    <FrameLayout
+        android:id="@+id/loader_container"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:background="#80000000"
+        android:visibility="invisible">
+
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_gravity="center">
+
+        <ProgressBar
+            android:id="@+id/progress_loader"
+            style="?android:attr/progressBarStyleLarge"
+            android:layout_width="64dp"
+            android:layout_height="64dp"
+            android:indeterminate="true"
+            android:layout_gravity="center"
+            android:indeterminateTint="@color/custom_primary" />
+
+        <TextView
+            android:id="@+id/progress_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:text=""
+            android:textColor="@android:color/black"
+            android:textStyle="bold"
+            android:textSize="16sp"
+            android:layout_marginTop="12dp" />
+    </LinearLayout>
+</FrameLayout>
+
+    </FrameLayout>

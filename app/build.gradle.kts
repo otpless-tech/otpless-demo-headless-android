@@ -45,5 +45,5 @@ dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
-    implementation ("io.github.otpless-tech:otpless-headless-sdk:0.2.9")
+    implementation ("io.github.otpless-tech:otpless-headless-sdk:0.3.6")
 }

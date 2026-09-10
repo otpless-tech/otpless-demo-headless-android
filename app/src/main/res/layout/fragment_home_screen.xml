@@ -99,6 +99,41 @@
                 app:backgroundTint="@color/custom_primary"
                 app:cornerRadius="10dp"
                 android:textColor="@android:color/white" />
+
+            <!-- Shown only when silent auth (SNA) and every dashboard-configured
+                 fallback are exhausted (statusCode 9106) - lets the user pick a
+                 delivery channel explicitly instead of a dead end. Demonstrates
+                 OtplessRequest.setDeliveryChannel("SMS"/"WHATSAPP"/"VIBER"). -->
+            <LinearLayout
+                android:id="@+id/sna_fallback_row"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="12dp"
+                android:visibility="gone">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/retry_sms_button"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginEnd="6dp"
+                    android:text="Retry via SMS"
+                    android:textAllCaps="false"
+                    android:textSize="12sp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/retry_whatsapp_button"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="6dp"
+                    android:text="Retry via WhatsApp"
+                    android:textAllCaps="false"
+                    android:textSize="12sp" />
+            </LinearLayout>
         </LinearLayout>
     </ScrollView>
 

@@ -1,12 +1,12 @@
 package com.otpless.demo.otplessheadlessdemo
 
 import android.os.Bundle
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.EditText
+import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
@@ -16,38 +16,27 @@ import com.otpless.v2.android.sdk.dto.OtplessRequest
 import com.otpless.v2.android.sdk.dto.OtplessResponse
 import com.otpless.v2.android.sdk.dto.ResponseTypes
 import com.otpless.v2.android.sdk.main.OtplessSDK
-import com.otpless.v2.android.sdk.main.OtplessSDK.startAsync
 import kotlinx.coroutines.launch
 
 
-// TODO: Rename parameter arguments, choose names that match
-// the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
-private const val ARG_PARAM1 = "param1"
-private const val ARG_PARAM2 = "param2"
-private const val ARG_PARAM3 = "param3"
+private const val ARG_PHONE_NUMBER = "phone_number"
+private const val ARG_DELIVERY_CHANNEL = "delivery_channel"
 
-/**
- * A simple [Fragment] subclass.
- * Use the [OTPScreen.newInstance] factory method to
- * create an instance of this fragment.
- */
 class OTPScreen : Fragment() {
     private var phoneNumber: String? = null
     private var deliveryChannel: String? = null
-    private var responseJson: String? = null
 
     private lateinit var otpEditText: EditText
     private lateinit var submitButton: Button
-    private lateinit var loaderContainer: View
-    private lateinit var progressText: TextView
+    private lateinit var boxLoader: ProgressBar
+    private lateinit var statusText: TextView
     private lateinit var phoneDisplay: TextView
-    private lateinit var channelText: TextView
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         arguments?.let {
-            phoneNumber = it.getString(ARG_PARAM1)
-            responseJson = it.getString(ARG_PARAM2)
-            deliveryChannel = it.getString(ARG_PARAM3)
+            phoneNumber = it.getString(ARG_PHONE_NUMBER)
+            deliveryChannel = it.getString(ARG_DELIVERY_CHANNEL)
         }
     }
 
@@ -62,10 +51,9 @@ class OTPScreen : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         otpEditText = view.findViewById(R.id.otp_input)
         submitButton = view.findViewById(R.id.otp_submit)
-        loaderContainer = view.findViewById(R.id.loader_container)
-        progressText = view.findViewById(R.id.progress_text)
+        boxLoader = view.findViewById(R.id.otp_box_loader)
+        statusText = view.findViewById(R.id.otp_status_text)
         phoneDisplay = view.findViewById(R.id.phone_display)
-        channelText = view.findViewById(R.id.otp_channel_text)
         OtplessSDK.setResponseCallback(this::onOtplessResponse)
 
         phoneDisplay.text = "Sending... OTP \uD83D\uDCAC to +91 $phoneNumber on $deliveryChannel"
@@ -94,7 +82,7 @@ class OTPScreen : Fragment() {
 
     private fun onOtplessResponse(response: OtplessResponse) {
         OtplessSDK.commit(response)
-        Log.d("OTPLESS", response.toString())
+        OtplessLogger.logResponse("OTPScreen", response)
 
         val context = requireContext()
         val authType = response.response?.optString("authType")
@@ -103,7 +91,9 @@ class OTPScreen : Fragment() {
 
             ResponseTypes.VERIFY -> {
                 if (authType == "OTP") {
-                    if (response.statusCode != 200){
+                    if (response.statusCode == 200) {
+                        showLoader("OTP verified ✅ Completing login...")
+                    } else {
                         hideLoader()
                         handleVerifyError(response)
                     }
@@ -135,19 +125,14 @@ class OTPScreen : Fragment() {
                     ?.optString("token")
                     ?.takeIf { it.isNotBlank() }
                     ?.let { token ->
-                        val clipboard = requireContext().getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                        val clip = android.content.ClipData.newPlainText("OTPless Token", token)
-                        clipboard.setPrimaryClip(clip)
-
-                        // Single toast message
-                        Toast.makeText(context, "Token received \uD83D\uDC4D and copied to clipboard:\n$token", Toast.LENGTH_LONG).show()
-                        // Clear the entire back stack
-                        parentFragmentManager.popBackStack(null, FragmentManager.POP_BACK_STACK_INCLUSIVE)
-
-                        // Navigate to HomeScreen (fresh)
-                        parentFragmentManager.beginTransaction()
-                            .replace(R.id.fragment_container, HomeScreen())
-                            .commit()
+                        if (!isStateSaved) {
+                            // Clear the entire back stack so "back" from Success can't return to OTP entry
+                            parentFragmentManager.popBackStack(null, FragmentManager.POP_BACK_STACK_INCLUSIVE)
+                            parentFragmentManager.beginTransaction()
+                                .replace(R.id.fragment_container, SuccessScreen.newInstance(token))
+                                .commit()
+                            parentFragmentManager.executePendingTransactions()
+                        }
                     }
             }
 
@@ -199,33 +184,27 @@ class OTPScreen : Fragment() {
     }
 
     private fun showLoader(message: String) {
-        loaderContainer.visibility = View.VISIBLE
-        progressText.text = message
+        boxLoader.visibility = View.VISIBLE
+        statusText.text = message
+        statusText.visibility = View.VISIBLE
         submitButton.isEnabled = false
+        otpEditText.isEnabled = false
     }
 
     private fun hideLoader() {
-        loaderContainer.visibility = View.GONE
-        progressText.text = ""
+        boxLoader.visibility = View.GONE
+        statusText.text = ""
+        statusText.visibility = View.GONE
         submitButton.isEnabled = true
+        otpEditText.isEnabled = true
     }
     companion object {
-        /**
-         * Use this factory method to create a new instance of
-         * this fragment using the provided parameters.
-         *
-         * @param param1 Parameter 1.
-         * @param param2 Parameter 2.
-         * @return A new instance of fragment OTPScreen.
-         */
-        // TODO: Rename and change types and number of parameters
         @JvmStatic
-        fun newInstance(param1: String, param2: String,param3: String) =
+        fun newInstance(phoneNumber: String, deliveryChannel: String) =
             OTPScreen().apply {
                 arguments = Bundle().apply {
-                    putString(ARG_PARAM1, param1)
-                    putString(ARG_PARAM2, param2)
-                    putString(ARG_PARAM3, param3)
+                    putString(ARG_PHONE_NUMBER, phoneNumber)
+                    putString(ARG_DELIVERY_CHANNEL, deliveryChannel)
                 }
             }
     }

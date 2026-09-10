@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/otp_fragment"
     android:layout_width="match_parent"
@@ -24,86 +25,83 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Verify OTP"
-                android:textSize="22sp"
+                android:textSize="24sp"
                 android:textStyle="bold"
                 android:textColor="#222222"
-                android:layout_marginBottom="24dp" />
+                android:layout_marginBottom="20dp" />
 
             <TextView
                 android:id="@+id/phone_display"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text=""
-                android:textSize="12sp"
+                android:textSize="13sp"
                 android:layout_gravity="center"
-                android:textColor="#444444"
-                android:layout_marginBottom="8dp" />
+                android:textColor="#666666"
+                android:gravity="center"
+                android:layout_marginBottom="20dp" />
 
-            <EditText
-                android:id="@+id/otp_input"
+            <!-- OTP box: hosts its own inline spinner (otp_box_loader) so the
+                 verify/waiting state shows inside the box itself instead of a
+                 full-screen overlay. -->
+            <FrameLayout
                 android:layout_width="match_parent"
-                android:layout_height="48dp"
-                android:hint="One Time Password"
-                android:inputType="number"
-                android:padding="12dp"
-                android:textColor="#000000"
-                android:textSize="16sp" />
+                android:layout_height="wrap_content">
 
-            <Button
-                android:id="@+id/otp_submit"
-                android:layout_width="match_parent"
-                android:layout_height="48dp"
-                android:text="Verify"
-                android:textAllCaps="false"
-                android:layout_marginTop="24dp"
-                android:backgroundTint="@color/custom_primary"
-                android:textColor="@android:color/white" />
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="One-time password"
+                    app:boxBackgroundMode="outline"
+                    app:boxCornerRadiusTopStart="10dp"
+                    app:boxCornerRadiusTopEnd="10dp"
+                    app:boxCornerRadiusBottomStart="10dp"
+                    app:boxCornerRadiusBottomEnd="10dp">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/otp_input"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="number"
+                        android:paddingEnd="40dp"
+                        android:textColor="#000000"
+                        android:textSize="18sp"
+                        android:letterSpacing="0.3" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <ProgressBar
+                    android:id="@+id/otp_box_loader"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:layout_gravity="end|center_vertical"
+                    android:layout_marginEnd="16dp"
+                    android:indeterminate="true"
+                    android:indeterminateTint="@color/custom_primary"
+                    android:visibility="gone" />
+            </FrameLayout>
+
             <TextView
-                android:id="@+id/otp_channel_text"
-                android:layout_width="wrap_content"
+                android:id="@+id/otp_status_text"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text=""
                 android:textSize="12sp"
-                android:layout_gravity="center"
-                android:textColor="#444444"
+                android:gravity="center"
+                android:textColor="#666666"
                 android:layout_marginTop="8dp"
-                android:layout_marginBottom="8dp" />
+                android:visibility="gone" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/otp_submit"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:text="Verify"
+                android:textAllCaps="false"
+                android:layout_marginTop="20dp"
+                app:backgroundTint="@color/custom_primary"
+                app:cornerRadius="10dp"
+                android:textColor="@android:color/white" />
         </LinearLayout>
     </ScrollView>
 
-    <!-- Reusable overlay loader -->
-    <FrameLayout
-        android:id="@+id/loader_container"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:gravity="center"
-        android:background="#80000000"
-        android:visibility="gone">
-
-        <LinearLayout
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:gravity="center"
-            android:layout_gravity="center">
-
-            <ProgressBar
-                android:id="@+id/progress_loader"
-                style="?android:attr/progressBarStyleLarge"
-                android:layout_width="64dp"
-                android:layout_height="64dp"
-                android:indeterminate="true"
-                android:indeterminateTint="@color/custom_primary" />
-
-            <TextView
-                android:id="@+id/progress_text"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text=""
-                android:textColor="@android:color/white"
-                android:textStyle="bold"
-                android:textSize="16sp"
-                android:layout_marginTop="12dp" />
-        </LinearLayout>
-    </FrameLayout>
 </FrameLayout>

@@ -5,12 +5,12 @@ plugins {
 
 android {
     namespace = "com.otpless.demo.otplessheadlessdemo"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.otpless.demo.otplessheadlessdemo"
-        minSdk = 21
-        targetSdk = 35
+        minSdk = 23
+        targetSdk = 36
         versionCode = 1
         versionName = "1.0"
 
@@ -45,5 +45,5 @@ dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
-    implementation ("io.github.otpless-tech:otpless-headless-sdk:0.3.6")
+    implementation ("io.github.otpless-tech:otpless-headless-sdk:2.0.1")
 }

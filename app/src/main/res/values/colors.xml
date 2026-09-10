@@ -7,4 +7,8 @@
     <color name="custom_primary">#0A84FF</color> <!-- Blue button/appbar -->
     <color name="custom_primary_variant">#006EDC</color> <!-- Optional dark variant -->
     <color name="custom_status_bar">#006EDC</color> <!-- Status bar -->
+    <color name="custom_success">#1FA97E</color> <!-- Success green -->
+    <color name="custom_error">#E5484D</color> <!-- Error red -->
+    <color name="log_console_bg">#1B1F24</color> <!-- Event log console background -->
+    <color name="log_console_text">#7FE38C</color> <!-- Event log console text -->
 </resources>

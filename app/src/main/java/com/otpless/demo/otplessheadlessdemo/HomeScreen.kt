@@ -1,50 +1,30 @@
 package com.otpless.demo.otplessheadlessdemo
 
 import android.os.Bundle
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.EditText
+import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.otpless.v2.android.sdk.dto.OtplessRequest
 import com.otpless.v2.android.sdk.dto.OtplessResponse
 import com.otpless.v2.android.sdk.dto.ResponseTypes
 import com.otpless.v2.android.sdk.main.OtplessSDK
-import com.otpless.v2.android.sdk.main.OtplessSDK.startAsync
 import kotlinx.coroutines.launch
 
 
-// TODO: Rename parameter arguments, choose names that match
-// the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
-private const val ARG_PARAM1 = "param1"
-private const val ARG_PARAM2 = "param2"
-
-/**
- * A simple [Fragment] subclass.
- * Use the [HomeScreen.newInstance] factory method to
- * create an instance of this fragment.
- */
 class HomeScreen : Fragment() {
-    // TODO: Rename and change types of parameters
-    private var param1: String? = null
-    private var param2: String? = null
     private lateinit var etPhoneNumber: EditText
     private lateinit var submit: Button
-    private lateinit var loaderContainer: View
-    private lateinit var progressText: TextView
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        arguments?.let {
-            param1 = it.getString(ARG_PARAM1)
-            param2 = it.getString(ARG_PARAM2)
-        }
-    }
+    private lateinit var boxLoader: ProgressBar
+    private lateinit var statusText: TextView
+    private lateinit var snaFallbackRow: View
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -58,10 +38,12 @@ class HomeScreen : Fragment() {
         etPhoneNumber = view.findViewById<EditText>(R.id.phone_input)
         submit = view.findViewById<Button>(R.id.phone_submit)
         OtplessSDK.setResponseCallback(this::onOtplessResponse)
-        loaderContainer = view.findViewById(R.id.loader_container)
-        progressText = view.findViewById(R.id.progress_text)
+        boxLoader = view.findViewById(R.id.phone_box_loader)
+        statusText = view.findViewById(R.id.phone_status_text)
+        snaFallbackRow = view.findViewById(R.id.sna_fallback_row)
 
         submit.setOnClickListener {
+            snaFallbackRow.visibility = View.GONE
             this.showLoader("Initiating request...\uD83D\uDD10")
             val phone = etPhoneNumber.text.toString().trim()
             val otplessRequest = OtplessRequest()
@@ -70,11 +52,30 @@ class HomeScreen : Fragment() {
                 OtplessSDK.start(request = otplessRequest, callback = this@HomeScreen::onOtplessResponse)
             }
         }
+
+        view.findViewById<Button>(R.id.retry_sms_button).setOnClickListener { retryWithChannel("SMS") }
+        view.findViewById<Button>(R.id.retry_whatsapp_button).setOnClickListener { retryWithChannel("WHATSAPP") }
+    }
+
+    /**
+     * Manual fallback offered when silent auth is exhausted (see the 9106 branch
+     * below). Demonstrates OtplessRequest.setDeliveryChannel("SMS"/"WHATSAPP"/"VIBER")
+     * from the custom-headless-request doc.
+     */
+    private fun retryWithChannel(channel: String) {
+        snaFallbackRow.visibility = View.GONE
+        showLoader("Sending OTP via $channel...")
+        val otplessRequest = OtplessRequest()
+        otplessRequest.setPhoneNumber(etPhoneNumber.text.toString().trim(), "+91")
+        otplessRequest.setDeliveryChannel(channel)
+        lifecycleScope.launch {
+            OtplessSDK.start(request = otplessRequest, callback = this@HomeScreen::onOtplessResponse)
+        }
     }
 
     private fun onOtplessResponse(response: OtplessResponse) {
         OtplessSDK.commit(response)
-        Log.d("OTPLESS", response.toString())
+        OtplessLogger.logResponse("HomeScreen", response)
 
         val context = requireContext()
         val authType = response.response?.optString("authType")
@@ -101,13 +102,18 @@ class HomeScreen : Fragment() {
                         if (!isStateSaved) {
                             val fragment = OTPScreen.newInstance(
                                 etPhoneNumber.text.toString(),
-                                response.toString(),
                                 deliveryChannel!!
                             )
-                            requireActivity().supportFragmentManager.beginTransaction()
+                            val fm = requireActivity().supportFragmentManager
+                            fm.beginTransaction()
                                 .replace(R.id.fragment_container, fragment)
                                 .addToBackStack("HomeScreen")
                                 .commit()
+                            // Force the swap (and OTPScreen's setResponseCallback) to run now,
+                            // not on the next main-thread loop iteration - otherwise a
+                            // callback that arrives immediately after INITIATE (e.g.
+                            // DELIVERY_STATUS) still lands on this screen instead of OTPScreen.
+                            fm.executePendingTransactions()
                         }
                     }
 
@@ -116,24 +122,28 @@ class HomeScreen : Fragment() {
                     }
 
                     else -> {
-                        hideLoader()
                         if (response.statusCode == 200) {
+                            hideLoader()
                             Toast.makeText(context, " Request initiated✅ for $authType", Toast.LENGTH_LONG).show()
-                        } else
-                        {
-                          handleInitiateError(response)
+                        } else {
+                            handleInitiateError(response)
                         }
-
                     }
                 }
             }
 
             ResponseTypes.VERIFY -> {
                 if (authType == "SILENT_AUTH") {
-                    if (response.statusCode == 9106){
+                    if (response.statusCode == 9106) {
+                        // Per OTPless docs: silent auth AND every dashboard-configured
+                        // fallback method have been exhausted - this is terminal, so
+                        // offer a manual channel instead of a dead end.
                         hideLoader()
-                        Toast.makeText(context, "Silent auth session failed", Toast.LENGTH_LONG).show()
+                        showError("Couldn't verify silently. Continue via:")
+                        snaFallbackRow.visibility = View.VISIBLE
                     } else {
+                        // SmartAuth is retrying automatically via a fresh INITIATE for
+                        // the next configured method - nothing to do here but wait.
                         showLoader("Unable to verify over network ...")
                     }
                 }
@@ -155,12 +165,13 @@ class HomeScreen : Fragment() {
                     ?.optString("token")
                     ?.takeIf { it.isNotBlank() }
                     ?.let { token ->
-                        val clipboard = requireContext().getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                        val clip = android.content.ClipData.newPlainText("OTPless Token", token)
-                        clipboard.setPrimaryClip(clip)
-
-                        // Single toast message
-                        Toast.makeText(context, "Token received \uD83D\uDC4D and copied to clipboard:\n$token", Toast.LENGTH_LONG).show()
+                        if (!isStateSaved) {
+                            val fm = requireActivity().supportFragmentManager
+                            fm.beginTransaction()
+                                .replace(R.id.fragment_container, SuccessScreen.newInstance(token))
+                                .commit()
+                            fm.executePendingTransactions()
+                        }
                     }
             }
 
@@ -170,117 +181,38 @@ class HomeScreen : Fragment() {
         }
     }
     private fun handleInitiateError(response: OtplessResponse) {
-        val errorCode = response.response?.get("errorCode") as? String
-        val errorMessage = response.response?.get("errorMessage") as? String
-        Toast.makeText(context,"⚠ $errorMessage", Toast.LENGTH_SHORT).show()
-        when (errorCode) {
-            "7101" -> {
-                // Handle request error: Invalid parameters values or missing parameters
-                println("OTPless Error: $errorMessage")
-            }
-
-            "7102" -> {
-                // Handle request error: Invalid phone number
-                println("OTPless Error: $errorMessage")
-            }
-
-            "7103" -> {
-                // Handle request error: Invalid phone number delivery channel
-                println("OTPless Error: $errorMessage")
-            }
-
-            "7104" -> {
-                // Handle request error: Invalid email
-                println("OTPless Error: $errorMessage")
-            }
-
-            "7105" -> {
-                // Handle request error: Invalid email channel
-                println("OTPless Error: $errorMessage")
-            }
-
-            "7106" -> {
-                // Handle request error: Invalid phone number or email
-                println("OTPless Error: $errorMessage")
-            }
-
-            "7113" -> {
-                // Handle request error: Invalid expiry
-                println("OTPless Error: $errorMessage")
-            }
-
-            "7116" -> {
-                // Handle request error: OTP Length is invalid (4 or 6 only allowed)
-                println("OTPless Error: $errorMessage")
-            }
-
-            "7121" -> {
-                // Handle request error: Invalid app hash
-                println("OTPless Error: $errorMessage")
-            }
-
-            "4000" -> {
-                // Handle invalid request values
-                println("OTPless Error: $errorMessage")
-            }
-
-            "4003" -> {
-                // Handle incorrect request channel
-                println("OTPless Error: $errorMessage")
-            }
-
-            "401", "7025" -> {
-                // Handle unauthorized request or country not enabled
-                println("OTPless Error: $errorMessage")
-            }
-
-            "7020", "7022", "7023", "7024" -> {
-                // Handle rate limiting errors (Too many requests)
-                println("OTPless Error: $errorMessage")
-            }
-
-            "9100", "9104", "9103" -> {
-                // Handle network connectivity errors
-                println("OTPless Error: $errorMessage")
-            }
-
-            else -> {
-                // Handle unknown error
-                println("OTPless Error: $errorMessage")
-            }
-        }
+        val error = OtplessErrorHandler.classify(response)
+        OtplessLogger.log("HomeScreen: [${error.category}] ${error.code} - ${error.message}")
+        showError(error.message)
+        Toast.makeText(context, "⚠ ${error.message}", Toast.LENGTH_SHORT).show()
     }
 
-
     private fun showLoader(message: String) {
-        loaderContainer.visibility = View.VISIBLE
-        progressText.text = message
+        boxLoader.visibility = View.VISIBLE
+        setStatusText(message, isError = false)
         submit.isEnabled = false
+        etPhoneNumber.isEnabled = false
     }
 
     private fun hideLoader() {
-        loaderContainer.visibility = View.GONE
-        progressText.text = ""
+        boxLoader.visibility = View.GONE
+        setStatusText("", isError = false)
         submit.isEnabled = true
+        etPhoneNumber.isEnabled = true
     }
 
-    companion object {
-        /**
-         * Use this factory method to create a new instance of
-         * this fragment using the provided parameters.
-         *
-         * @param param1 Parameter 1.
-         * @param param2 Parameter 2.
-         * @return A new instance of fragment HomeScreen.
-         */
-        // TODO: Rename and change types and number of parameters
-        @JvmStatic
-        fun newInstance(param1: String, param2: String) =
-            HomeScreen().apply {
-                arguments = Bundle().apply {
-                    putString(ARG_PARAM1, param1)
-                    putString(ARG_PARAM2, param2)
-                }
-            }
+    private fun showError(message: String) {
+        boxLoader.visibility = View.GONE
+        setStatusText(message, isError = true)
+        submit.isEnabled = true
+        etPhoneNumber.isEnabled = true
+    }
+
+    private fun setStatusText(message: String, isError: Boolean) {
+        statusText.text = message
+        statusText.visibility = if (message.isBlank()) View.GONE else View.VISIBLE
+        statusText.setTextColor(
+            ContextCompat.getColor(requireContext(), if (isError) R.color.custom_error else R.color.status_muted)
+        )
     }
 }
